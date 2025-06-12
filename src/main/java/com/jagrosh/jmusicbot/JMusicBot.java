@@ -74,12 +74,15 @@ public class JMusicBot
         Prompt prompt = new Prompt("JMusicBot");
         
         // startup checks
-        OtherUtil.checkVersion(prompt);
         OtherUtil.checkJavaVersion(prompt);
-        
+
         // load config
         BotConfig config = new BotConfig(prompt);
         config.load();
+        if(config.isValid() && config.useUpdateAlerts())
+        {
+            OtherUtil.checkVersion(prompt, config.getUpdateRepo());
+        }
         if(!config.isValid())
             return;
         LOG.info("Loaded config from " + config.getConfigLocation());

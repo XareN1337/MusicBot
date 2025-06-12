@@ -67,31 +67,32 @@ public class Listener extends ListenerAdapter
             }
             catch(Exception ignore) {}
         });
+
+        // Check for updates if enabled
         if(bot.getConfig().useUpdateAlerts())
         {
-            bot.getThreadpool().scheduleWithFixedDelay(() -> 
+            bot.getThreadpool().scheduleWithFixedDelay(() ->
             {
                 try
                 {
                     User owner = bot.getJDA().retrieveUserById(bot.getConfig().getOwnerId()).complete();
                     String currentVersion = OtherUtil.getCurrentVersion();
-                    String latestVersionJagrosh = OtherUtil.getLatestVersion("jagrosh");
-                    String latestVersionSeVile = OtherUtil.getLatestVersion("SeVile");
-                    
-                    if (latestVersionJagrosh != null && latestVersionSeVile != null) 
+                    String[] repoParts = bot.getConfig().getUpdateRepo().split("/");
+
+                    if (repoParts.length == 2)
                     {
-                        boolean isJagroshNewerThan043 = OtherUtil.compareVersions(latestVersionJagrosh, "0.4.3") > 0;
-                        boolean isCurrentVersionSeVile = currentVersion.equalsIgnoreCase(latestVersionSeVile);
-                        
-                        if (isJagroshNewerThan043 && !isCurrentVersionSeVile) 
+                        String latestVersion = OtherUtil.getLatestVersion(repoParts[0], repoParts[1]);
+
+                        if (latestVersion != null && !latestVersion.equals(currentVersion))
                         {
-                            String msg = String.format(OtherUtil.NEW_VERSION_AVAILABLE, currentVersion, latestVersionJagrosh);
+                            String msg = String.format(OtherUtil.NEW_VERSION_AVAILABLE,
+                                currentVersion, latestVersion, bot.getConfig().getUpdateRepo());
                             owner.openPrivateChannel().queue(pc -> pc.sendMessage(msg).queue());
                         }
                     }
                 }
                 catch(Exception ignored) {}
-            }, 0, 24, TimeUnit.HOURS);
+            }, 0, bot.getConfig().getUpdateCheckInterval(), TimeUnit.HOURS);
         }
     }
     

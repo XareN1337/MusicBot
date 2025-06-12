@@ -34,6 +34,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+
 /**
  *
  * @author John Grosh <john.a.grosh@gmail.com>
@@ -43,7 +44,8 @@ public class OtherUtil
     public final static String NEW_VERSION_AVAILABLE = "There is a new version of JMusicBot available!\n"
                     + "Current version: %s\n"
                     + "New Version: %s\n\n"
-                    + "Please visit https://github.com/jagrosh/MusicBot/releases/latest to get the latest release.";
+                    + "Please visit https://github.com/%s/releases/latest to get the latest release.";
+
     private final static String WINDOWS_INVALID_PATH = "c:\\windows\\system32\\";
     
     /**
@@ -157,31 +159,10 @@ public class OtherUtil
     public static void checkJavaVersion(Prompt prompt)
     {
         if(!System.getProperty("java.vm.name").contains("64"))
-            prompt.alert(Prompt.Level.WARNING, "Java Version", 
+            prompt.alert(Prompt.Level.WARNING, "Java Version",
                     "It appears that you may not be using a supported Java version. Please use 64-bit java.");
     }
-    
-    public static void checkVersion(Prompt prompt)
-    {
-        String version = getCurrentVersion();
-        String latestJagrosh = getLatestVersion("jagrosh");
-        String latestSeVile = getLatestVersion("SeVile");
-        
-        boolean isSeVileVersion = version.toLowerCase().contains("sevile");
-        
-        if (isSeVileVersion) {
-            if (latestJagrosh != null && compareVersions(latestJagrosh, "0.4.4") > 0) {
-                prompt.alert(Prompt.Level.WARNING, "JMusicBot Version", 
-                    String.format(NEW_VERSION_AVAILABLE, version, latestJagrosh));
-            }
-        } else {
-            if (latestJagrosh != null && !latestJagrosh.equals(version)) {
-                prompt.alert(Prompt.Level.WARNING, "JMusicBot Version", 
-                    String.format(NEW_VERSION_AVAILABLE, version, latestJagrosh));
-            }
-        }
-    }
-    
+
     public static String getCurrentVersion()
     {
         if(JMusicBot.class.getPackage()!=null && JMusicBot.class.getPackage().getImplementationVersion()!=null)
@@ -189,12 +170,30 @@ public class OtherUtil
         else
             return "UNKNOWN";
     }
-    
-    public static String getLatestVersion(String repoOwner) {
+
+    public static void checkVersion(Prompt prompt, String updateRepo)
+    {
+        String version = getCurrentVersion();
+        String[] repoParts = updateRepo.split("/");
+        if (repoParts.length != 2) {
+            prompt.alert(Prompt.Level.WARNING, "JMusicBot Version",
+                "Invalid update repository format: " + updateRepo + ". Expected format: owner/repository");
+            return;
+        }
+
+        String latestVersion = getLatestVersion(repoParts[0], repoParts[1]);
+
+        if (latestVersion != null && !latestVersion.equals(version)) {
+            prompt.alert(Prompt.Level.WARNING, "JMusicBot Version",
+                String.format(NEW_VERSION_AVAILABLE, version, latestVersion, updateRepo));
+        }
+    }
+
+    public static String getLatestVersion(String repoOwner, String repoName) {
         try {
             Response response = new OkHttpClient.Builder().build()
                     .newCall(new Request.Builder().get()
-                    .url("https://api.github.com/repos/" + repoOwner + "/MusicBot/releases/latest").build())
+                    .url("https://api.github.com/repos/" + repoOwner + "/" + repoName + "/releases/latest").build())
                     .execute();
             ResponseBody body = response.body();
             if (body != null) {
@@ -211,22 +210,24 @@ public class OtherUtil
         return null;
     }
 
-    public static int compareVersions(String v1, String v2) 
+    public static int compareVersions(String v1, String v2)
     {
         String[] parts1 = v1.replace("v", "").split("\\.");
         String[] parts2 = v2.replace("v", "").split("\\.");
-    
+
         int length = Math.max(parts1.length, parts2.length);
-        for (int i = 0; i < length; i++) 
+        for (int i = 0; i < length; i++)
         {
             int num1 = i < parts1.length ? Integer.parseInt(parts1[i]) : 0;
             int num2 = i < parts2.length ? Integer.parseInt(parts2[i]) : 0;
-    
+
             if (num1 > num2) return 1;
             if (num1 < num2) return -1;
         }
         return 0;
     }
+    
+
 
     /**
      * Checks if the bot JMusicBot is being run on is supported & returns the reason if it is not.

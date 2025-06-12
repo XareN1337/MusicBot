@@ -45,11 +45,11 @@ public class BotConfig
     private Path path = null;
     private String token, prefix, altprefix, helpWord, playlistsFolder, logLevel,
             successEmoji, warningEmoji, errorEmoji, loadingEmoji, searchingEmoji,
-            ytPoToken, ytVisitorData, evalEngine;
+            ytPoToken, ytVisitorData, evalEngine, updateRepo;
     private YouTubeUtil.RoutingPlanner ytRoutingPlanner;
     private List<IpBlock> ytIpBlocks;
     private boolean stayInChannel, songInGame, npImages, updatealerts, useEval, dbots;
-    private long owner, maxSeconds, aloneTimeUntilStop;
+    private long owner, maxSeconds, aloneTimeUntilStop, updateCheckInterval;
     private int maxYTPlaylistPages;
     private double skipratio;
     private OnlineStatus status;
@@ -94,6 +94,8 @@ public class BotConfig
             songInGame = config.getBoolean("songinstatus");
             npImages = config.getBoolean("npimages");
             updatealerts = config.getBoolean("updatealerts");
+            updateRepo = config.getString("updaterepo");
+            updateCheckInterval = config.getLong("updatecheckinterval");
             logLevel = config.getString("loglevel");
             useEval = config.getBoolean("eval");
             evalEngine = config.getString("evalengine");
@@ -326,6 +328,16 @@ public class BotConfig
     public boolean useUpdateAlerts()
     {
         return updatealerts;
+    }
+
+    public String getUpdateRepo()
+    {
+        return updateRepo;
+    }
+
+    public long getUpdateCheckInterval()
+    {
+        return updateCheckInterval;
     }
 
     public String getLogLevel()
