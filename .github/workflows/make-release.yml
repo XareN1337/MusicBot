@@ -1,63 +1,124 @@
 name: Make Release
+
 on:
   workflow_dispatch:
     inputs:
-      version_number:
-        description: 'Version Number'     
+      tag_name:
+        description: Release tag, for example v0.4.4.0
         required: true
         type: string
-      info:
-        description: 'Description of this Release'
-        required: true
+      release_name:
+        description: Release title. Defaults to the tag name.
+        required: false
         type: string
+      body:
+        description: Release notes. Leave empty to generate notes from commits.
+        required: false
+        type: string
+      draft:
+        description: Create release as draft
+        required: true
+        default: true
+        type: boolean
+      prerelease:
+        description: Mark release as prerelease
+        required: true
+        default: false
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
 
 jobs:
-  build_jar:
-    name: Build Jar
+  release:
+    name: Build and Create Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up JDK 11
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
-          java-version: '11'
-          distribution: 'adopt'
+          java-version: "25"
+          distribution: temurin
           cache: maven
-      - name: Set Version
-        uses: datamonsters/replace-action@v2
-        with:
-          files: 'pom.xml'
-          replacements: 'Snapshot=${{ github.event.inputs.version_number }}'
+
       - name: Build with Maven
         run: mvn --batch-mode --update-snapshots verify
-      - name: Rename jar
-        run: mv target/*-All.jar JMusicBot-${{ github.event.inputs.version_number }}.jar
-      - name: Upload jar
-        uses: actions/upload-artifact@v4
-        with:
-          name: jar
-          path: JMusicBot-${{ github.event.inputs.version_number }}.jar
-          if-no-files-found: error
-  create_release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: build_jar
-    steps:
-      - name: Download a Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: jar
-          path: .
-      - name: Create Release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ github.event.inputs.version_number }}
-          name: ${{ github.event.inputs.version_number }}
-          draft: true
-          prerelease: false
-          artifacts: "JMusicBot-${{ github.event.inputs.version_number }}.jar"
-          body: |
-            ${{ github.event.inputs.info }}
+
+      - name: Prepare release metadata
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG_NAME: ${{ inputs.tag_name }}
+          INPUT_RELEASE_NAME: ${{ inputs.release_name }}
+          INPUT_BODY: ${{ inputs.body }}
+          INPUT_DRAFT: ${{ inputs.draft }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            tag_name="$INPUT_TAG_NAME"
+            release_name="${INPUT_RELEASE_NAME:-$INPUT_TAG_NAME}"
+            draft="$INPUT_DRAFT"
+            prerelease="$INPUT_PRERELEASE"
+          else
+            tag_name="$REF_NAME"
+            release_name="$REF_NAME"
+            draft="false"
+            prerelease="false"
+          fi
+
+          jar_path="$(find target -maxdepth 1 -type f -name '*-All.jar' | sort | head -n 1)"
+          if [ -z "$jar_path" ]; then
+            echo "No shaded jar matching target/*-All.jar was found." >&2
+            exit 1
+          fi
+
+          release_jar="JMusicBot-${tag_name#v}.jar"
+          cp "$jar_path" "$release_jar"
+
+          if [ -n "$INPUT_BODY" ]; then
+            printf '%s\n' "$INPUT_BODY" > release-notes.md
+            echo "notes_args=--notes-file release-notes.md" >> "$GITHUB_OUTPUT"
+          else
+            echo "notes_args=--generate-notes" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+          echo "release_name=$release_name" >> "$GITHUB_OUTPUT"
+          echo "release_jar=$release_jar" >> "$GITHUB_OUTPUT"
+          echo "draft=$draft" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          args=(
+            "release" "create" "${{ steps.release.outputs.tag_name }}"
+            "${{ steps.release.outputs.release_jar }}"
+            "--title" "${{ steps.release.outputs.release_name }}"
+            ${{ steps.release.outputs.notes_args }}
+          )
+
+          if [ "${{ steps.release.outputs.draft }}" = "true" ]; then
+            args+=("--draft")
+          fi
+
+          if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
+            args+=("--prerelease")
+          fi
+
+          gh "${args[@]}"
