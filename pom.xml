@@ -45,6 +45,16 @@
             <version>6.4.1</version>
         </dependency>
         <dependency>
+            <groupId>club.minnced</groupId>
+            <artifactId>jdave-api</artifactId>
+            <version>0.1.8</version>
+        </dependency>
+        <dependency>
+            <groupId>club.minnced</groupId>
+            <artifactId>jdave-native-darwin</artifactId>
+            <version>0.1.8</version>
+        </dependency>
+        <dependency>
             <groupId>pw.chew</groupId>
             <artifactId>jda-chewtils</artifactId>
             <version>2.1</version>
