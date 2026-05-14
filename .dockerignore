@@ -1,0 +1,11 @@
+.git
+.github
+.circleci
+target
+Playlists
+config.txt
+serversettings.json
+tokens.txt
+*.log
+*.tmp
+.DS_Store

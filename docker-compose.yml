@@ -1,0 +1,11 @@
+services:
+  musicbot:
+    build: .
+    container_name: musicbot
+    restart: unless-stopped
+    working_dir: /data
+    volumes:
+      - .:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TZ: Europe/Warsaw
